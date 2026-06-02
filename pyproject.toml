@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s2st"
+version = "0.0.1"
+description = "Real-time on-device speech-to-speech translation (En<->Hi)"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+audio = ["soundfile>=0.12"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+s2st-eval = "s2st.eval.harness:print_report"

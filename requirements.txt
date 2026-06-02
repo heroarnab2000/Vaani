@@ -1,0 +1,20 @@
+# --- Phase 0 (scaffold): runs with just numpy; soundfile optional for real wavs ---
+numpy>=1.24
+soundfile>=0.12   # optional: only needed to read real .wav files
+
+# --- Phase 1+ (uncomment as you wire real stages) ---
+# faster-whisper>=1.0        # ASR (CTranslate2, INT8)
+# whisperx                    # word-level timestamps / alignment
+# silero-vad                  # streaming VAD
+# transformers>=4.40          # NLLB / SeamlessM4T
+# sentencepiece               # tokenizers for NLLB
+# TTS                         # coqui-ai-TTS (XTTS-v2)  -> pip install coqui-tts
+# sacrebleu                   # BLEU
+# unbabel-comet               # COMET translation quality
+# pytest                      # test runner
+# wandb                       # experiment tracking
+
+# --- Phase 4+ (optimization / serving) ---
+# vllm
+# onnxruntime
+# (TensorRT / TensorRT-LLM installed per NVIDIA's platform instructions)

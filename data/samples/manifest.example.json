@@ -1,0 +1,16 @@
+[
+  {
+    "id": "demo01",
+    "audio": "data/samples/missing_on_purpose.wav",
+    "ref_src": "word0 word1 word2 word3 word4 word5 word6",
+    "ref_tgt": "",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "demo02",
+    "audio": "data/samples/also_missing.wav",
+    "ref_src": "word0 word1 word2 word3 word4 word5 word6",
+    "ref_tgt": "",
+    "tgt_lang": "hi"
+  }
+]

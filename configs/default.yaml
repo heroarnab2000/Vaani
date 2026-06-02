@@ -1,0 +1,34 @@
+# Default project configuration.
+# Phase 0 only reads a few of these; the rest document intended choices so the
+# config is the single place to flip dummy -> real stages later.
+
+language:
+  src: en
+  tgt: hi          # English <-> Hindi (Hindi is your local-market advantage)
+
+audio:
+  sample_rate: 16000
+
+# stage = which implementation to load. "dummy" today; swap per phase.
+stages:
+  asr: dummy        # -> faster_whisper (Phase 1)
+  translation: dummy  # -> nllb / seamless (Phase 1), +isochrony (Phase 2)
+  tts: dummy        # -> xtts_v2 (Phase 1)
+
+models:
+  asr:
+    name: openai/whisper-large-v3
+    compute_type: int8      # CTranslate2 path
+  translation:
+    name: facebook/nllb-200-distilled-600M
+  tts:
+    name: tts_models/multilingual/multi-dataset/xtts_v2
+
+isochrony:
+  enabled: false           # turn on in Phase 2; drives the ablation
+  strategy: rerank         # rerank | length_tokens
+  tolerance: 0.15          # target median duration deviation
+
+eval:
+  manifest: data/samples/manifest.example.json
+  dataset: fleurs          # google/fleurs or covost2 for real refs

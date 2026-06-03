@@ -14,6 +14,12 @@ import json
 import sys
 from pathlib import Path
 
+# print Hindi (Devanagari) safely regardless of the console code page
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import soundfile as sf

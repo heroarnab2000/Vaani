@@ -13,9 +13,10 @@ Hardware: RTX 3050 Ti laptop (4 GB), but all numbers below are **CPU INT8**.
 | Stage | Model | Metric | Value | Notes |
 |---|---|---|---|---|
 | ASR | distil-large-v3 (CT2 INT8, CPU) | WER | **0.058 median / 0.060 mean** | English; normalized text |
-| ASR | distil-large-v3 (CT2 INT8, CPU) | RTF | **0.93 median / 1.19 mean** | ~9.4s/clip fixed encoder cost dominates |
-| Translation | NLLB-200 distilled 600M | spBLEU / COMET | _pending_ | stage coded; not yet measured |
-| TTS | XTTS-v2 | SECS / UTMOS / dur-dev | _pending_ | stage not yet built |
+| Translation | NLLB-200 distilled 600M (CPU) | spBLEU | **31.21** | flores200 tokenizer; 11 refs |
+| Translation | NLLB-200 distilled 600M (CPU) | COMET | _optional_ | wired; enable `eval.comet` (~2.3 GB model) |
+| TTS | XTTS-v2 | SECS / UTMOS / dur-dev | _pending_ | stage coded; not yet run |
+| System | ASR + MT cascade (CPU) | RTF | **1.97 median / 2.16 mean** | ~17s/clip; Phase-4 "before" number |
 
 Notes:
 - distil-large-v3 chosen over large-v3 for the baseline (English-only source,

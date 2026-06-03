@@ -24,25 +24,32 @@ only ever touch the abstract interfaces.
 
 ## Quickstart
 
+**One command** — creates `.venv`, installs the pinned stack, and downloads all
+models + a FLEURS test slice (~6 GB of models on first run; resumes from cache):
+
 ```bash
-# 1. isolated env (versions pinned in requirements.txt; coqui-tts needs torch <2.9)
+python scripts/setup.py
+```
+
+Then, using the venv's Python (`./.venv/Scripts/python.exe` on Windows,
+`./.venv/bin/python` elsewhere):
+
+```bash
+.venv/Scripts/python.exe scripts/run_eval.py            # metric table over the test slice
+.venv/Scripts/python.exe scripts/demo.py --id fleurs_1938   # English in -> Hindi out, same voice
+.venv/Scripts/python.exe tests/test_pipeline.py         # 8 plumbing tests (run on bare numpy)
+```
+
+<details><summary>Manual setup (if you'd rather not use <code>setup.py</code>)</summary>
+
+```bash
 python -m venv .venv
-.venv\Scripts\activate                  # Windows  (use source .venv/bin/activate on *nix)
+.venv\Scripts\activate            # Windows (source .venv/bin/activate on *nix)
 pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
-
-# 2. fetch a small FLEURS test slice (wav + manifest with en/hi references)
-python scripts/prep_fleurs.py --n 12
-
-# 3. run the cascade and print the metric table
-python scripts/run_eval.py
-
-# 4. hear one clip translated — English in, Hindi out, same voice
-python scripts/demo.py --id fleurs_1938
-
-# plumbing-only sanity check (no heavy deps, runs on bare numpy): 8 tests
-python tests/test_pipeline.py
+python scripts/prep_fleurs.py --n 12   # models download lazily on first run
 ```
+</details>
 
 Stages are chosen in [`configs/default.yaml`](configs/default.yaml)
 (`stages.asr/translation/tts`); set them all to `dummy` to run the original
@@ -72,6 +79,7 @@ src/s2st/
   pipeline/         # orchestrator (model-agnostic, times each stage)
   eval/             # metrics (WER/spBLEU/COMET/dur-dev/RTF) + harness
 scripts/
+  setup.py          # one-shot bootstrap: venv + deps + models + test data
   run_eval.py       # build pipeline from config -> metric table
   prep_fleurs.py    # stream a FLEURS slice -> wav + manifest (en/hi refs)
   demo.py           # one clip end-to-end -> saved translated wav

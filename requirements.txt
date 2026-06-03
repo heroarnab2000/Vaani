@@ -7,15 +7,17 @@ soundfile>=0.12    # read/write wav
 faster-whisper>=1.1   # ASR (CTranslate2, INT8); pulls ctranslate2
 datasets>=3.0         # FLEURS test slice (prep_fleurs.py)
 
-# --- Phase 1: translation (active) ---
-torch>=2.2            # NLLB / XTTS backend; CPU wheel via --index-url https://download.pytorch.org/whl/cpu
-transformers>=4.57    # NLLB-200; also the minimum coqui-tts wants
+# --- Phase 1: translation + TTS backend (active) ---
+# CPU wheels: --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2,<2.9       # NLLB / XTTS; >=2.9 forces torchcodec (FFmpeg pain on Win)
+torchaudio==2.8.0     # match torch; coqui-tts uses it for audio IO below torch 2.9
+transformers>=4.57,<5 # NLLB-200 + XTTS; 5.x removed isin_mps_friendly that XTTS imports
 sentencepiece         # NLLB tokenizer
 sacrebleu             # spBLEU (flores200 tokenizer)
 # unbabel-comet       # COMET translation quality (~2.3 GB model); enable eval.comet to use
 
-# --- Phase 1: voice-preserving TTS (next increment) ---
-# coqui-tts           # XTTS-v2 (maintained idiap fork); numpy>=1.26, transformers>=4.57
+# --- Phase 1: voice-preserving TTS (active) ---
+coqui-tts>=0.27       # XTTS-v2 (maintained idiap fork); numpy>=1.26 (numpy 2.x OK)
 
 # --- tooling ---
 # pytest                    # test runner (tests also run via `python tests/test_pipeline.py`)

@@ -4,31 +4,49 @@ Streaming ASR → isochrony-controlled translation → voice-preserving TTS, bui
 
 > This is a portfolio project aimed at AI/ML engineering roles (edge inference, model optimization). The design philosophy: **modify and optimize real models, prove every step with a before/after number** — not API plumbing. Full rationale, learning roadmap, and resource links are in [`docs/PROJECT_DOCS.md`](docs/PROJECT_DOCS.md).
 
-## Status: Phase 0 complete
+## Status: Phase 1 — cascade baseline (real models, end-to-end)
 
-The whole pipeline runs end-to-end with **dummy stages**, and the eval harness prints a metric table. Real models get swapped in stage by stage without touching the orchestrator or harness.
+distil-large-v3 (ASR) → NLLB-200 (MT) → XTTS-v2 (voice-cloning TTS) runs end to
+end on CPU: **English clip in → Hindi audio in the source speaker's voice.**
+First measured baselines on FLEURS (en→hi, 12 clips):
+
+| Metric | Median | Stage |
+|---|---|---|
+| WER | **0.058** | ASR (distil-large-v3, CT2 INT8) |
+| spBLEU | **31.21** | MT (NLLB-200 distilled 600M) |
+| duration deviation | **0.48** | isochrony "before" — Phase 2 target ~0.10–0.15 |
+| RTF | **5.6** | full CPU cascade — Phase 4 "before" |
+
+Full table + notes in [`docs/RESULTS.md`](docs/RESULTS.md). SECS/UTMOS and COMET
+are wired but not yet measured. Stages swap via **one line** in
+[`configs/default.yaml`](configs/default.yaml) — the orchestrator and harness
+only ever touch the abstract interfaces.
 
 ## Quickstart
 
 ```bash
-# no heavy deps needed for Phase 0
-python tests/test_pipeline.py     # 6 tests pass
-python scripts/run_eval.py        # prints the metric table
+# 1. isolated env (versions pinned in requirements.txt; coqui-tts needs torch <2.9)
+python -m venv .venv
+.venv\Scripts\activate                  # Windows  (use source .venv/bin/activate on *nix)
+pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+
+# 2. fetch a small FLEURS test slice (wav + manifest with en/hi references)
+python scripts/prep_fleurs.py --n 12
+
+# 3. run the cascade and print the metric table
+python scripts/run_eval.py
+
+# 4. hear one clip translated — English in, Hindi out, same voice
+python scripts/demo.py --id fleurs_1938
+
+# plumbing-only sanity check (no heavy deps, runs on bare numpy): 8 tests
+python tests/test_pipeline.py
 ```
 
-Example output:
-
-```
-=== S2ST evaluation report ===
-items: 2
-
-id              WER  dur_dev      RTF   lat(s)
-----------------------------------------------
-demo01        0.000    0.095    0.001    0.004
-...
-```
-
-The numbers are meaningless with dummy stages — that's the point. Phase 0 proves the *plumbing* (every metric computes, aggregates, prints) so that real results later flow through unchanged.
+Stages are chosen in [`configs/default.yaml`](configs/default.yaml)
+(`stages.asr/translation/tts`); set them all to `dummy` to run the original
+zero-dependency Phase-0 pipeline.
 
 ## Architecture
 
@@ -45,15 +63,21 @@ Cascade by design (per-stage control, production-standard). A direct end-to-end 
 src/s2st/
   types.py          # dataclasses passed between stages
   interfaces.py     # ASRStage / TranslationStage / TTSStage ABCs
-  asr/              # DummyASR -> FasterWhisperASR (Phase 1)
-  translation/      # DummyTranslation -> NLLB/Seamless (+isochrony Phase 2)
-  tts/              # DummyTTS -> XTTSv2 (Phase 1)
+  config.py         # load configs/default.yaml
+  factory.py        # config string -> concrete stage (lazy heavy imports)
+  audio.py          # mono mix + linear resample + wav load (no heavy deps)
+  asr/              # DummyASR | FasterWhisperASR (faster-whisper, CT2)
+  translation/      # DummyTranslation | NLLBTranslation (NLLB-200)
+  tts/              # DummyTTS | XTTSv2TTS (voice cloning; isochrony in Phase 2)
   pipeline/         # orchestrator (model-agnostic, times each stage)
-  eval/             # metrics + harness  (Phase 0 deliverable)
-scripts/run_eval.py # entry point
+  eval/             # metrics (WER/spBLEU/COMET/dur-dev/RTF) + harness
+scripts/
+  run_eval.py       # build pipeline from config -> metric table
+  prep_fleurs.py    # stream a FLEURS slice -> wav + manifest (en/hi refs)
+  demo.py           # one clip end-to-end -> saved translated wav
 configs/default.yaml
+docs/PROJECT_DOCS.md  docs/RESULTS.md   # plan + measured results log
 tests/
-docs/PROJECT_DOCS.md
 ```
 
 ## How to extend (the core pattern)
@@ -61,7 +85,8 @@ docs/PROJECT_DOCS.md
 Each real model implements one interface from `interfaces.py` and is selected in `configs/default.yaml`. To add real ASR:
 
 1. Create `src/s2st/asr/faster_whisper.py` implementing `ASRStage.transcribe`.
-2. Export it from `src/s2st/asr/__init__.py`.
+2. Add a branch in `src/s2st/factory.py` (`build_asr`) with a **lazy** import so
+   the dummy path stays dependency-free.
 3. Flip `stages.asr: faster_whisper` in the config.
 
 Nothing else changes — the orchestrator and harness only know the interfaces.
@@ -71,8 +96,8 @@ Nothing else changes — the orchestrator and harness only know the interfaces.
 | Phase | Goal | Target metric |
 |---|---|---|
 | 0 ✅ | Scaffold + eval harness | plumbing works end-to-end |
-| 1 | Cascade baseline (real models) | record baseline WER/BLEU/SECS/UTMOS/RTF |
-| 2 | Isochrony (the differentiator) | median duration deviation ≈ 10–15% |
+| 1 ✅ (core) | Cascade baseline (real models) | WER 0.058, spBLEU 31.2, dur-dev 0.48, RTF 5.6 — SECS/UTMOS/COMET pending |
+| 2 | Isochrony (the differentiator) | median duration deviation ≈ 10–15% (from 0.48) |
 | 3 | Streaming | first-audio latency < 1–2s, RTF < 1 |
 | 4 | Quantization + profiling | 2–4× latency gain, quality within ~2–5% |
 | 5 | Edge deployment | RTF < 1 on device, no cloud |

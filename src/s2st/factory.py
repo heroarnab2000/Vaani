@@ -63,6 +63,15 @@ def build_tts(cfg: dict[str, Any]) -> TTSStage:
         from .tts import DummyTTS
 
         return DummyTTS(sample_rate=audio.get("sample_rate", 16000))
+    if name == "xtts_v2":
+        from .tts.xtts import XTTSv2TTS
+
+        m = cfg.get("models", {}).get("tts", {}) or {}
+        return XTTSv2TTS(
+            model_name=m.get("name", "tts_models/multilingual/multi-dataset/xtts_v2"),
+            device=m.get("device", "cpu"),
+            tgt_lang=cfg.get("language", {}).get("tgt", "hi"),
+        )
     raise ValueError(f"unknown tts stage: {name!r}")
 
 

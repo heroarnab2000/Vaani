@@ -40,8 +40,12 @@ class S2STPipeline:
         tr_res = self.translation.translate(asr_res, tgt_lang, target_dur)
         timings["translation"] = time.perf_counter() - t0
 
+        # voice preservation: clone the source speaker unless a separate
+        # reference is given, so the output keeps the input speaker's voice.
+        ref_wav = speaker_wav if speaker_wav is not None else audio
+
         t0 = time.perf_counter()
-        tts_res = self.tts.synthesize(tr_res, speaker_wav, sample_rate)
+        tts_res = self.tts.synthesize(tr_res, ref_wav, sample_rate)
         timings["tts"] = time.perf_counter() - t0
 
         return S2STOutput(asr=asr_res, translation=tr_res, tts=tts_res, timings=timings)

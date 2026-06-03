@@ -12,8 +12,8 @@ audio:
 # stage = which implementation to load. Swap per phase by editing one line.
 stages:
   asr: faster_whisper  # Phase 1: real ASR
-  translation: nllb    # Phase 1: real MT (was dummy); +isochrony in Phase 2
-  tts: dummy           # -> xtts_v2 (Phase 1)
+  translation: nllb    # Phase 1: real MT; +isochrony in Phase 2
+  tts: xtts_v2         # Phase 1: real voice-preserving TTS (was dummy)
 
 models:
   asr:
@@ -26,6 +26,7 @@ models:
     device: cpu             # NLLB-600M is fine on CPU; keeps the 4 GB VRAM free
   tts:
     name: tts_models/multilingual/multi-dataset/xtts_v2
+    device: cpu             # XTTS ~2 GB; CPU avoids the 4 GB VRAM squeeze (slow = ok)
 
 isochrony:
   enabled: false           # turn on in Phase 2; drives the ablation

@@ -30,6 +30,29 @@ def test_duration_deviation():
     assert abs(metrics.duration_deviation(2.0, 2.3) - 0.15) < 1e-9
 
 
+def test_normalize_text():
+    # casing + punctuation should not count as errors
+    assert metrics.normalize_text("Hello, World!") == "hello world"
+    assert metrics.wer(
+        metrics.normalize_text("Hello, world."),
+        metrics.normalize_text("hello world"),
+    ) == 0.0
+
+
+def test_factory_builds_dummy_pipeline():
+    from s2st.factory import build_pipeline
+
+    cfg = {
+        "stages": {"asr": "dummy", "translation": "dummy", "tts": "dummy"},
+        "language": {"src": "en", "tgt": "hi"},
+        "audio": {"sample_rate": 16000},
+    }
+    pipe = build_pipeline(cfg)
+    out = pipe.run(np.zeros(16000, dtype=np.float32), 16000, tgt_lang="hi")
+    assert out.translation.tgt_lang == "hi"
+    assert out.tts.audio.size > 0
+
+
 def test_rtf():
     assert metrics.real_time_factor(0.5, 1.0) == 0.5
 

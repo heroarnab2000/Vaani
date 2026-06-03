@@ -9,16 +9,18 @@ language:
 audio:
   sample_rate: 16000
 
-# stage = which implementation to load. "dummy" today; swap per phase.
+# stage = which implementation to load. Swap per phase by editing one line.
 stages:
-  asr: dummy        # -> faster_whisper (Phase 1)
-  translation: dummy  # -> nllb / seamless (Phase 1), +isochrony (Phase 2)
-  tts: dummy        # -> xtts_v2 (Phase 1)
+  asr: faster_whisper  # Phase 1: real ASR (was dummy)
+  translation: dummy   # -> nllb / seamless (Phase 1), +isochrony (Phase 2)
+  tts: dummy           # -> xtts_v2 (Phase 1)
 
 models:
   asr:
-    name: openai/whisper-large-v3
-    compute_type: int8      # CTranslate2 path
+    name: distil-large-v3   # English-only distilled Whisper; ~large-v3 WER on En.
+                            # Swap to large-v3 (multilingual) here when bandwidth allows.
+    device: cpu             # cpu | cuda  (GPU needs cuBLAS/cuDNN; CPU is robust)
+    compute_type: int8      # CTranslate2 path; bad RTF on CPU is expected pre-Phase-4
   translation:
     name: facebook/nllb-200-distilled-600M
   tts:
@@ -30,5 +32,7 @@ isochrony:
   tolerance: 0.15          # target median duration deviation
 
 eval:
-  manifest: data/samples/manifest.example.json
+  manifest: data/samples/fleurs_manifest.json  # built by scripts/prep_fleurs.py
   dataset: fleurs          # google/fleurs or covost2 for real refs
+  comet: false             # COMET needs a ~2.3 GB model; enable for the MT step
+  comet_gpus: 0            # COMET on CPU to avoid contending for 4 GB VRAM

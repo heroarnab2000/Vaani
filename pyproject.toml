@@ -7,10 +7,11 @@ name = "s2st"
 version = "0.0.1"
 description = "Real-time on-device speech-to-speech translation (En<->Hi)"
 requires-python = ">=3.9"
-dependencies = ["numpy>=1.24"]
+dependencies = ["numpy>=1.24", "pyyaml>=6", "soundfile>=0.12"]
 
 [project.optional-dependencies]
-audio = ["soundfile>=0.12"]
+asr = ["faster-whisper>=1.1"]
+data = ["datasets>=3.0"]
 dev = ["pytest"]
 
 [tool.setuptools.packages.find]

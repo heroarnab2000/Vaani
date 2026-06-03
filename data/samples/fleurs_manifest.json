@@ -1,0 +1,86 @@
+[
+  {
+    "id": "fleurs_1904",
+    "audio": "data/samples/fleurs_en_us_1904.wav",
+    "ref_src": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+    "ref_tgt": "हालांकि धीमे कम्युनिकेशन चैनल की वजह से पश्चिम का रहन-सहन 25-30 साल पीछे जा सकता है",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1675",
+    "audio": "data/samples/fleurs_en_us_1675.wav",
+    "ref_src": "all nouns alongside the word sie for you always begin with a capital letter even in the middle of a sentence",
+    "ref_tgt": "साई के साथ-साथ सभी संज्ञा शब्द हमेशा अंग्रेज़ी के बड़े अक्षर से ही शुरू होते हैं भले ही वे वाक्य के बीच में ही क्यों न हों",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1950",
+    "audio": "data/samples/fleurs_en_us_1950.wav",
+    "ref_src": "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron",
+    "ref_tgt": "",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1728",
+    "audio": "data/samples/fleurs_en_us_1728.wav",
+    "ref_src": "the cabbage juice changes color depending on how acidic or basic alkaline the chemical is",
+    "ref_tgt": "गोभी का जूस अम्लीय या आधारभूत क्षारीय रसायन के आधार पर रंग बदलता है",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1972",
+    "audio": "data/samples/fleurs_en_us_1972.wav",
+    "ref_src": "many people don't think about them as dinosaurs because they have feathers and can fly",
+    "ref_tgt": "उनके पंख और उड़ने की वजह से कई लोग उनको डायनासोर नहीं मानते",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1938",
+    "audio": "data/samples/fleurs_en_us_1938.wav",
+    "ref_src": "the hospital has followed protocol for infection control including separating the patient from others to prevent possible infection of others",
+    "ref_tgt": "अस्पताल ने संक्रमण नियंत्रण के लिए नियमों का पालन किया है इन नियमों में दूसरों के संभावित संक्रमण को रोकने के लिए रोगी को दूसरों से अलग करना शामिल है",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1876",
+    "audio": "data/samples/fleurs_en_us_1876.wav",
+    "ref_src": "the northern marianas emergency management office said that there were no damages reported in the nation",
+    "ref_tgt": "उत्तरी मैरिएनस इमरजेंसी प्रबंधन कार्यलय की ओर से कहा गया कि राष्ट्र में नुकसान की कोई सूचना प्राप्त नहीं हुई थी",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1914",
+    "audio": "data/samples/fleurs_en_us_1914.wav",
+    "ref_src": "twentieth century research has shown that there are two pools of genetic variation hidden and expressed",
+    "ref_tgt": "बीसवीं सदी के शोध से पता चला है कि आनुवंशिक भिन्नता के दो पूल हैं छुपा हुआ और अभिव्यक्त",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1846",
+    "audio": "data/samples/fleurs_en_us_1846.wav",
+    "ref_src": "the aspect ratio of this format dividing by twelve to obtain the simplest whole-number ratio is therefore said to be 3:2",
+    "ref_tgt": "इस प्रारूप सबसे सरल पूर्ण-संख्या अनुपात प्राप्त करने के लिए बारह से भाग देना के अभिमुखता अनुपात को इसलिए 3:2 कहा जाता है।",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1806",
+    "audio": "data/samples/fleurs_en_us_1806.wav",
+    "ref_src": "as light pollution in their heyday was not the kind of problem it is today they are usually located in cities or at campuses easier to reach than those built in modern times",
+    "ref_tgt": "चूंकि उनकी शुरुआती दिनों में प्रकाश प्रदूषण आज की तरह की समस्या नहीं थी वे आमतौर पर शहरों में या परिसरों में स्थित हैं जहां आधुनिक समय में निर्मित जगहों की तुलना में पहुंचना आसान होता हैं",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1776",
+    "audio": "data/samples/fleurs_en_us_1776.wav",
+    "ref_src": "through the night between 150 and 200 copies were made now known as dunlap broadsides",
+    "ref_tgt": "रात के समय 150 और 200 के बीच प्रतियों बनती है  जिन्हे अब  डनलप ब्रॉडसाइड्स” के रूप में जाना जाता है।",
+    "tgt_lang": "hi"
+  },
+  {
+    "id": "fleurs_1729",
+    "audio": "data/samples/fleurs_en_us_1729.wav",
+    "ref_src": "for example each year students from bennet school in north carolina design a website about their trip to the state capital each year the website gets remodeled but old versions are kept online to serve as a scrapbook",
+    "ref_tgt": "उदाहरण के लिए नॉर्थ कैरोलिना के बेनेट स्कूल के हज़ारों स्टूडेंट्स हर साल राज्य की राजधानी की अपनी यात्रा के बारे में एक वेबसाइट डिज़ाइन करते हैं वेबसाइट हर साल फिर से तैयार की जाती है लेकिन कुछ पुराने वर्ज़न्स को स्क्रेपबुक के रूप में इस्तेमाल करने के लिए ऑनलाइन रखा जाता है",
+    "tgt_lang": "hi"
+  }
+]

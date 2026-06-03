@@ -1,18 +1,24 @@
-# --- Phase 0 (scaffold): runs with just numpy; soundfile optional for real wavs ---
+# --- Core (always needed) ---
 numpy>=1.24
-soundfile>=0.12   # optional: only needed to read real .wav files
+pyyaml>=6          # config loading
+soundfile>=0.12    # read/write wav
 
-# --- Phase 1+ (uncomment as you wire real stages) ---
-# faster-whisper>=1.0        # ASR (CTranslate2, INT8)
-# whisperx                    # word-level timestamps / alignment
-# silero-vad                  # streaming VAD
-# transformers>=4.40          # NLLB / SeamlessM4T
-# sentencepiece               # tokenizers for NLLB
-# TTS                         # coqui-ai-TTS (XTTS-v2)  -> pip install coqui-tts
-# sacrebleu                   # BLEU
-# unbabel-comet               # COMET translation quality
-# pytest                      # test runner
-# wandb                       # experiment tracking
+# --- Phase 1: ASR + data prep (active) ---
+faster-whisper>=1.1   # ASR (CTranslate2, INT8); pulls ctranslate2
+datasets>=3.0         # FLEURS test slice (prep_fleurs.py)
+
+# --- Phase 1: translation (next increment) ---
+# transformers>=4.40        # NLLB-200 / SeamlessM4T
+# sentencepiece             # NLLB tokenizer
+# sacrebleu                 # spBLEU (flores200 tokenizer)
+# unbabel-comet             # COMET translation quality (~2.3 GB model)
+
+# --- Phase 1: voice-preserving TTS ---
+# coqui-tts                 # XTTS-v2 (maintained fork of Coqui TTS)
+
+# --- tooling ---
+# pytest                    # test runner (tests also run via `python tests/test_pipeline.py`)
+# wandb                     # experiment tracking
 
 # --- Phase 4+ (optimization / serving) ---
 # vllm

@@ -7,7 +7,24 @@ clear NotImplemented markers to be filled when real stages land.
 """
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import List
+
+_PUNCT = re.compile(r"[^\w\s]", flags=re.UNICODE)
+_WS = re.compile(r"\s+")
+
+
+def normalize_text(s: str) -> str:
+    """Lowercase, strip punctuation, collapse whitespace (Unicode-aware).
+
+    Used before WER so Whisper's cased/punctuated output is compared fairly
+    against normalized references. \\w keeps Devanagari, so it works for Hindi
+    too.
+    """
+    s = unicodedata.normalize("NFKC", s or "").lower().strip()
+    s = _PUNCT.sub(" ", s)
+    return _WS.sub(" ", s).strip()
 
 
 def wer(reference: str, hypothesis: str) -> float:
@@ -55,15 +72,55 @@ def real_time_factor(processing_seconds: float, audio_seconds: float) -> float:
     return processing_seconds / audio_seconds
 
 
-# --- Quality metrics requiring models/refs: filled in later phases ---
+# --- Translation quality (Phase 1) ---
 
-def comet_score(*args, **kwargs) -> float:
-    raise NotImplementedError("COMET: wire in Phase 1 with real translation refs.")
+def bleu(references: List[str], hypotheses: List[str], tokenize: str = "flores200") -> float:
+    """Corpus BLEU over parallel ref/hyp lists, as a 0-100 score.
 
+    Defaults to the flores200 tokenizer (a.k.a. spBLEU) -- the standard for
+    FLEURS / NLLB and the right choice for Hindi, where the default 13a
+    tokenizer is unreliable. Falls back to 13a if the flores200 SPM is
+    unavailable.
+    """
+    import sacrebleu
+
+    try:
+        score = sacrebleu.corpus_bleu(hypotheses, [references], tokenize=tokenize)
+    except Exception:
+        score = sacrebleu.corpus_bleu(hypotheses, [references], tokenize="13a")
+    return float(score.score)
+
+
+_COMET_MODEL = None
+
+
+def comet_score(
+    sources: List[str],
+    hypotheses: List[str],
+    references: List[str],
+    model_name: str = "Unbabel/wmt22-comet-da",
+    gpus: int = 0,
+) -> float:
+    """System-level COMET (reference-based). Loads + caches the model on first
+    call. CPU by default (gpus=0) to avoid contending for scarce VRAM."""
+    global _COMET_MODEL
+    from comet import download_model, load_from_checkpoint
+
+    if _COMET_MODEL is None:
+        _COMET_MODEL = load_from_checkpoint(download_model(model_name))
+    data = [
+        {"src": s, "mt": h, "ref": r}
+        for s, h, r in zip(sources, hypotheses, references)
+    ]
+    out = _COMET_MODEL.predict(data, batch_size=8, gpus=gpus, progress_bar=False)
+    return float(out["system_score"])
+
+
+# --- TTS quality: wired in the TTS step ---
 
 def speaker_similarity(*args, **kwargs) -> float:
-    raise NotImplementedError("SECS: wire in Phase 1 with a speaker-embedding model.")
+    raise NotImplementedError("SECS: wire with a speaker-embedding model (TTS step).")
 
 
 def utmos(*args, **kwargs) -> float:
-    raise NotImplementedError("UTMOS: wire in Phase 1 with a naturalness estimator.")
+    raise NotImplementedError("UTMOS: wire with a naturalness estimator (TTS step).")

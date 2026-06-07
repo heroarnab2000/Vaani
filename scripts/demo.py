@@ -35,9 +35,15 @@ def main() -> None:
     ap.add_argument("--config", default=None)
     ap.add_argument("--id", default=None, help="manifest item id to use")
     ap.add_argument("--out-dir", default="data/samples")
+    ap.add_argument(
+        "--isochrony", choices=["on", "off"], default=None,
+        help="override isochrony.enabled (A/B the duration matching)",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
+    if args.isochrony is not None:
+        cfg.setdefault("isochrony", {})["enabled"] = args.isochrony == "on"
     sr = cfg.get("audio", {}).get("sample_rate", 16000)
 
     ref_text = None
@@ -61,16 +67,22 @@ def main() -> None:
     pipe = build_pipeline(cfg)
     out = pipe.run(audio, sr, tgt_lang=cfg.get("language", {}).get("tgt", "hi"))
 
+    iso_on = bool(cfg.get("isochrony", {}).get("enabled"))
+    src_dur = len(audio) / sr
     print(f"ASR : {out.asr.text}")
     print(f"MT  : {out.translation.text}")
     if ref_text:
         print(f"ref : {ref_text}")
+    print(f"isochrony={'on' if iso_on else 'off'}  "
+          f"source={src_dur:.1f}s  target={out.translation.target_speech_duration:.1f}s  "
+          f"output={out.tts.realized_duration:.1f}s")
     print(f"timings(s): {{'asr': {out.timings['asr']:.2f}, "
           f"'mt': {out.timings['translation']:.2f}, 'tts': {out.timings['tts']:.2f}}}")
 
     out_dir = resolve_path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_wav = out_dir / f"demo_{wav_path.stem}_hi.wav"
+    tag = "iso-on" if iso_on else "iso-off"
+    out_wav = out_dir / f"demo_{wav_path.stem}_hi_{tag}.wav"
     sf.write(str(out_wav), out.tts.audio, out.tts.sample_rate)
     print(f"wrote translated audio -> {out_wav} "
           f"({out.tts.realized_duration:.1f}s @ {out.tts.sample_rate} Hz)")

@@ -1,0 +1,12 @@
+# Normalize text to LF in the repo and on checkout. CI/Docker run on Linux, and
+# CRLF in inline workflow scripts / Dockerfiles is a classic breakage source.
+* text=auto eol=lf
+
+# Binary assets (never touch line endings)
+*.wav binary
+*.mp3 binary
+*.flac binary
+*.bin binary
+*.pt binary
+*.onnx binary
+*.png binary

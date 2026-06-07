@@ -1,5 +1,7 @@
 # Real-Time On-Device Speech-to-Speech Translation (En ↔ Hi)
 
+[![CI](https://github.com/heroarnab2000/Vaani/actions/workflows/ci.yml/badge.svg)](https://github.com/heroarnab2000/Vaani/actions/workflows/ci.yml)
+
 Streaming ASR → isochrony-controlled translation → voice-preserving TTS, built to run faster than real time on edge hardware, with a full evaluation harness and a cascade-vs-direct ablation.
 
 > This is a portfolio project aimed at AI/ML engineering roles (edge inference, model optimization). The design philosophy: **modify and optimize real models, prove every step with a before/after number** — not API plumbing. Full rationale, learning roadmap, and resource links are in [`docs/PROJECT_DOCS.md`](docs/PROJECT_DOCS.md).
@@ -100,6 +102,22 @@ Each real model implements one interface from `interfaces.py` and is selected in
 3. Flip `stages.asr: faster_whisper` in the config.
 
 Nothing else changes — the orchestrator and harness only know the interfaces.
+
+## CI / CD
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and PR:
+**ruff** lint + a **pytest matrix** (Python 3.10–3.12) + an **end-to-end dummy
+smoke** (`run_eval --config configs/dummy.yaml`). It installs only the light core
+(numpy/pyyaml/soundfile) — the ~6 GB of models and the heavy ML stack are never
+pulled in CI. This is exactly why Phase 0 made the pipeline runnable on bare
+numpy with dummy stages: the contract is tested fast and deterministically,
+while real-model runs happen locally / on a GPU box.
+
+[`.github/workflows/docker.yml`](.github/workflows/docker.yml) builds the CPU
+runtime image ([`Dockerfile`](Dockerfile)) on manual dispatch, and on a `vX.Y.Z`
+tag also publishes it to GHCR. Models are not baked in — they download to a
+mounted HF cache at runtime. The image's default command runs the dummy pipeline
+so `docker run` works with zero downloads.
 
 ## Roadmap
 

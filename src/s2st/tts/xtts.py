@@ -17,7 +17,7 @@ from typing import Optional
 
 import numpy as np
 
-from ..audio import resample_linear, to_mono
+from ..audio import fit_duration, resample_linear, to_mono
 from ..interfaces import TTSStage
 from ..types import TranslationResult, TTSResult
 
@@ -42,12 +42,17 @@ class XTTSv2TTS(TTSStage):
         model_name: str = "tts_models/multilingual/multi-dataset/xtts_v2",
         device: str = "cpu",
         tgt_lang: str = "hi",
+        rate_control: bool = False,
+        max_stretch: float = 1.5,
     ):
         os.environ.setdefault("COQUI_TOS_AGREED", "1")  # accept non-commercial license
         from TTS.api import TTS
 
         self.tts = TTS(model_name).to(device)
         self.tgt_lang = tgt_lang
+        # isochrony: fit the synthesized audio to the duration budget (Phase 2)
+        self.rate_control = rate_control
+        self.max_stretch = max_stretch
 
     def synthesize(
         self,
@@ -79,4 +84,9 @@ class XTTSv2TTS(TTSStage):
                 os.remove(tmp_path)
 
         audio = np.asarray(wav, dtype=np.float32)
+        # isochrony rate control: time-stretch toward the source-speech duration
+        if self.rate_control and translation.target_speech_duration > 0:
+            audio, _ = fit_duration(
+                audio, XTTS_SR, translation.target_speech_duration, self.max_stretch
+            )
         return TTSResult(audio=audio, sample_rate=XTTS_SR, realized_duration=len(audio) / XTTS_SR)

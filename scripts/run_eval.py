@@ -31,9 +31,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", nargs="?", help="manifest JSON (overrides config)")
     parser.add_argument("--config", default=None, help="path to a YAML config")
+    parser.add_argument(
+        "--isochrony", choices=["on", "off"], default=None,
+        help="override isochrony.enabled (for the on/off ablation)",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.isochrony is not None:
+        cfg.setdefault("isochrony", {})["enabled"] = args.isochrony == "on"
     pipeline = build_pipeline(cfg)
 
     manifest = args.manifest or cfg.get("eval", {}).get(

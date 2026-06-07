@@ -39,6 +39,17 @@ def test_normalize_text():
     ) == 0.0
 
 
+def test_fit_duration_noop():
+    # no-op paths must not require librosa (early returns)
+    from s2st.audio import fit_duration
+
+    a = np.zeros(24000, dtype=np.float32)  # 1 s at 24 kHz
+    out, f = fit_duration(a, 24000, 0.0)   # target <= 0 -> unchanged
+    assert f == 1.0 and len(out) == len(a)
+    out, f = fit_duration(a, 24000, 1.0)   # already matches -> no stretch
+    assert abs(f - 1.0) < 1e-6 and len(out) == len(a)
+
+
 def test_factory_builds_dummy_pipeline():
     from s2st.factory import build_pipeline
 

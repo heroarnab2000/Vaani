@@ -47,10 +47,14 @@ def build_translation(cfg: dict[str, Any]) -> TranslationStage:
         from .translation.nllb import NLLBTranslation
 
         m = cfg.get("models", {}).get("translation", {}) or {}
+        iso = cfg.get("isochrony", {}) or {}
         return NLLBTranslation(
             model_name=m.get("name", "facebook/nllb-200-distilled-600M"),
             device=m.get("device", "cpu"),
             src_lang=cfg.get("language", {}).get("src", "en"),
+            rerank=bool(iso.get("enabled")) and bool(iso.get("mt_rerank", True)),
+            n_candidates=int(iso.get("mt_candidates", 3)),
+            chars_per_sec=float(iso.get("hi_chars_per_sec", 14.0)),
         )
     raise ValueError(f"unknown translation stage: {name!r}")
 
@@ -67,10 +71,13 @@ def build_tts(cfg: dict[str, Any]) -> TTSStage:
         from .tts.xtts import XTTSv2TTS
 
         m = cfg.get("models", {}).get("tts", {}) or {}
+        iso = cfg.get("isochrony", {}) or {}
         return XTTSv2TTS(
             model_name=m.get("name", "tts_models/multilingual/multi-dataset/xtts_v2"),
             device=m.get("device", "cpu"),
             tgt_lang=cfg.get("language", {}).get("tgt", "hi"),
+            rate_control=bool(iso.get("enabled")) and bool(iso.get("tts_rate_control", True)),
+            max_stretch=float(iso.get("max_stretch", 1.5)),
         )
     raise ValueError(f"unknown tts stage: {name!r}")
 

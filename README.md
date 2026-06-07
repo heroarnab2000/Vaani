@@ -4,22 +4,24 @@ Streaming ASR → isochrony-controlled translation → voice-preserving TTS, bui
 
 > This is a portfolio project aimed at AI/ML engineering roles (edge inference, model optimization). The design philosophy: **modify and optimize real models, prove every step with a before/after number** — not API plumbing. Full rationale, learning roadmap, and resource links are in [`docs/PROJECT_DOCS.md`](docs/PROJECT_DOCS.md).
 
-## Status: Phase 1 — cascade baseline (real models, end-to-end)
+## Status: Phase 2 — isochrony (duration-aware MT + TTS rate control)
 
 distil-large-v3 (ASR) → NLLB-200 (MT) → XTTS-v2 (voice-cloning TTS) runs end to
-end on CPU: **English clip in → Hindi audio in the source speaker's voice.**
-First measured baselines on FLEURS (en→hi, 12 clips):
+end on CPU: **English clip in → Hindi audio in the source speaker's voice**, now
+**length-matched to the source**. FLEURS en→hi, 12 clips:
 
-| Metric | Median | Stage |
-|---|---|---|
-| WER | **0.058** | ASR (distil-large-v3, CT2 INT8) |
-| spBLEU | **31.21** | MT (NLLB-200 distilled 600M) |
-| duration deviation | **0.48** | isochrony "before" — Phase 2 target ~0.10–0.15 |
-| RTF | **5.6** | full CPU cascade — Phase 4 "before" |
+| Metric | Phase 1 baseline | + Isochrony | Stage |
+|---|---|---|---|
+| WER (median) | 0.058 | 0.058 | ASR (distil-large-v3, CT2 INT8) |
+| spBLEU | 31.21 | 30.31 | MT (NLLB-200 distilled 600M) |
+| duration deviation (median / mean) | 0.48 / 1.06 | **0.00 / 0.21** | isochrony (MT rerank + TTS rate control) |
+| RTF (median) | ~5.2 | 8.6 | full CPU cascade — Phase 4 "before" |
 
-Full table + notes in [`docs/RESULTS.md`](docs/RESULTS.md). SECS/UTMOS and COMET
-are wired but not yet measured. Stages swap via **one line** in
-[`configs/default.yaml`](configs/default.yaml) — the orchestrator and harness
+Reproduce the ablation: `python scripts/ablation.py`. Full table + honest
+caveats in [`docs/RESULTS.md`](docs/RESULTS.md) (dur-dev → 0 is partly "by
+construction" of rate control; the win is holding BLEU while doing it). SECS /
+UTMOS / COMET still wired-but-unmeasured. Stages + isochrony toggle live in
+[`configs/default.yaml`](configs/default.yaml); the orchestrator and harness
 only ever touch the abstract interfaces.
 
 ## Quickstart
@@ -105,7 +107,7 @@ Nothing else changes — the orchestrator and harness only know the interfaces.
 |---|---|---|
 | 0 ✅ | Scaffold + eval harness | plumbing works end-to-end |
 | 1 ✅ (core) | Cascade baseline (real models) | WER 0.058, spBLEU 31.2, dur-dev 0.48, RTF 5.6 — SECS/UTMOS/COMET pending |
-| 2 | Isochrony (the differentiator) | median duration deviation ≈ 10–15% (from 0.48) |
+| 2 ✅ | Isochrony (duration-aware MT + TTS rate control) | dur-dev median 0.48 → 0.00, mean 1.06 → 0.21; spBLEU held (31.2 → 30.3), WER unchanged |
 | 3 | Streaming | first-audio latency < 1–2s, RTF < 1 |
 | 4 | Quantization + profiling | 2–4× latency gain, quality within ~2–5% |
 | 5 | Edge deployment | RTF < 1 on device, no cloud |

@@ -28,9 +28,13 @@ models:
     name: tts_models/multilingual/multi-dataset/xtts_v2
     device: cpu             # XTTS ~2 GB; CPU avoids the 4 GB VRAM squeeze (slow = ok)
 
-isochrony:
-  enabled: false           # turn on in Phase 2; drives the ablation
-  strategy: rerank         # rerank | length_tokens
+isochrony:                 # Phase 2. enabled is the on/off ablation switch.
+  enabled: false           # off = Phase-1 baseline behavior (dur-dev ~0.48)
+  tts_rate_control: true   # fit TTS output to the duration budget (time-stretch)
+  max_stretch: 1.5         # clamp stretch factor to [1/max_stretch, max_stretch]
+  mt_rerank: true          # duration-aware MT: rerank candidates by spoken length
+  mt_candidates: 3         # number of length-penalty variants to generate
+  hi_chars_per_sec: 14.0   # Hindi spoken-rate prior for the MT duration estimate
   tolerance: 0.15          # target median duration deviation
 
 eval:

@@ -48,9 +48,15 @@ def main() -> None:
     manifest_path = str(resolve_path(manifest))
 
     sample_rate = cfg.get("audio", {}).get("sample_rate", 16000)
-    results = evaluate(pipeline, manifest_path, sample_rate=sample_rate)
-
     eval_cfg = cfg.get("eval", {}) or {}
+    results = evaluate(
+        pipeline,
+        manifest_path,
+        sample_rate=sample_rate,
+        enable_secs=bool(eval_cfg.get("secs", False)),
+        enable_utmos=bool(eval_cfg.get("utmos", False)),
+    )
+
     tmetrics = translation_corpus_metrics(
         results,
         enable_comet=bool(eval_cfg.get("comet", False)),

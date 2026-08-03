@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+
+# data + model artifacts (keep manifests, ignore big binaries)
+data/**/*.wav
+data/**/*.mp3
+data/**/*.flac
+models/
+*.pt
+*.bin
+*.onnx
+*.engine
+
+# experiment tracking / logs
+wandb/
+runs/
+*.log
+
+# notebooks checkpoints
+.ipynb_checkpoints/

@@ -1,0 +1,44 @@
+# Default project configuration.
+# Phase 0 only reads a few of these; the rest document intended choices so the
+# config is the single place to flip dummy -> real stages later.
+
+language:
+  src: en
+  tgt: hi          # English <-> Hindi (Hindi is your local-market advantage)
+
+audio:
+  sample_rate: 16000
+
+# stage = which implementation to load. Swap per phase by editing one line.
+stages:
+  asr: faster_whisper  # Phase 1: real ASR
+  translation: nllb    # Phase 1: real MT; +isochrony in Phase 2
+  tts: xtts_v2         # Phase 1: real voice-preserving TTS (was dummy)
+
+models:
+  asr:
+    name: distil-large-v3   # English-only distilled Whisper; ~large-v3 WER on En.
+                            # Swap to large-v3 (multilingual) here when bandwidth allows.
+    device: cpu             # cpu | cuda  (GPU needs cuBLAS/cuDNN; CPU is robust)
+    compute_type: int8      # CTranslate2 path; bad RTF on CPU is expected pre-Phase-4
+  translation:
+    name: facebook/nllb-200-distilled-600M
+    device: cpu             # NLLB-600M is fine on CPU; keeps the 4 GB VRAM free
+  tts:
+    name: tts_models/multilingual/multi-dataset/xtts_v2
+    device: cpu             # XTTS ~2 GB; CPU avoids the 4 GB VRAM squeeze (slow = ok)
+
+isochrony:                 # Phase 2. enabled is the on/off ablation switch.
+  enabled: false           # off = Phase-1 baseline behavior (dur-dev ~0.48)
+  tts_rate_control: true   # fit TTS output to the duration budget (time-stretch)
+  max_stretch: 1.5         # clamp stretch factor to [1/max_stretch, max_stretch]
+  mt_rerank: true          # duration-aware MT: rerank candidates by spoken length
+  mt_candidates: 3         # number of length-penalty variants to generate
+  hi_chars_per_sec: 14.0   # Hindi spoken-rate prior for the MT duration estimate
+  tolerance: 0.15          # target median duration deviation
+
+eval:
+  manifest: data/samples/fleurs_manifest.json  # built by scripts/prep_fleurs.py
+  dataset: fleurs          # google/fleurs or covost2 for real refs
+  comet: false             # COMET needs a ~2.3 GB model; enable for the MT step
+  comet_gpus: 0            # COMET on CPU to avoid contending for 4 GB VRAM

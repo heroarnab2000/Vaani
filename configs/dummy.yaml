@@ -1,0 +1,20 @@
+# All-dummy config: runs the full pipeline + eval harness on bare numpy, with
+# zero model downloads. Used by CI for an end-to-end plumbing smoke, and handy
+# for a fast local sanity check:  python scripts/run_eval.py --config configs/dummy.yaml
+language:
+  src: en
+  tgt: hi
+
+audio:
+  sample_rate: 16000
+
+stages:
+  asr: dummy
+  translation: dummy
+  tts: dummy
+
+isochrony:
+  enabled: false
+
+eval:
+  manifest: data/samples/manifest.example.json

@@ -121,6 +121,7 @@ def comet_score(
 # --- TTS quality (Phase 1 metrics, wired here) ---
 
 _SECS_MODEL = None
+_UTMOS_MODEL = None
 
 
 def speaker_similarity(
@@ -172,17 +173,24 @@ def speaker_similarity(
 def utmos(audio: np.ndarray, sample_rate: int) -> float:
     """UTMOS: predicted naturalness MOS (UTMOS22-strong), reference-free.
 
-    Runs the speechmos UTMOS22 predictor on the TTS output, resampled to the
-    16 kHz mono the model expects. Higher is better (roughly a 1-5 MOS scale).
-    Reference-free -- it scores the generated clip alone.
+    Runs the SpeechMOS UTMOS22-strong predictor (tarepan/SpeechMOS, loaded via
+    torch.hub -- no extra pip dep) on the TTS output, resampled to the 16 kHz
+    mono the model expects. Higher is better (roughly a 1-5 MOS scale).
+    Reference-free -- it scores the generated clip alone. Model cached on first
+    call and run on CPU.
     """
-    from speechmos import utmos22_strong
+    global _UTMOS_MODEL
+    import torch
 
     from ..audio import resample_linear, to_mono
 
+    if _UTMOS_MODEL is None:
+        _UTMOS_MODEL = torch.hub.load(
+            "tarepan/SpeechMOS", "utmos22_strong", trust_repo=True
+        )
+
     wav = resample_linear(to_mono(np.asarray(audio, dtype=np.float32)), sample_rate, 16000)
-    result = utmos22_strong.run(wav, sr=16000)
-    # speechmos returns a dict (e.g. {"utmos22_strong": 3.87}); tolerate a bare float too.
-    if isinstance(result, dict):
-        return float(next(iter(result.values())))
-    return float(result)
+    t = torch.from_numpy(np.ascontiguousarray(wav, dtype=np.float32)).unsqueeze(0)
+    with torch.no_grad():
+        score = _UTMOS_MODEL(t, 16000)
+    return float(score.reshape(-1)[0])

@@ -18,7 +18,7 @@ sacrebleu             # spBLEU (flores200 tokenizer)
 # --- Eval quality metrics (opt-in; heavy models, off by default) ---
 # unbabel-comet       # COMET translation quality (~2.3 GB model); enable eval.comet to use
 # speechbrain>=1.0    # SECS speaker similarity (ECAPA-TDNN, ~80 MB); enable eval.secs to use
-# speechmos           # UTMOS22 naturalness MOS for TTS output; enable eval.utmos to use
+# UTMOS: no pip dep -- uses tarepan/SpeechMOS via torch.hub (~390 MB model on first eval.utmos run)
 
 # --- Phase 1: voice-preserving TTS (active) ---
 coqui-tts>=0.27       # XTTS-v2 (maintained idiap fork); numpy>=1.26 (numpy 2.x OK)

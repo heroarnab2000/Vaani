@@ -18,7 +18,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install ruff
+      # Pin ruff: an unpinned linter drifts as new default rules land and breaks
+      # CI on unrelated releases. Bump deliberately, alongside any lint fixes.
+      - run: pip install "ruff==0.15.16"
       - name: Ruff lint
         run: ruff check src scripts tests
 

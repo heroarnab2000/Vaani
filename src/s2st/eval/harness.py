@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import statistics
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -32,6 +33,9 @@ class ItemResult:
     duration_deviation: float
     rtf: float
     latency: float
+    # per-clip TTS quality (only computed when enabled; heavy models)
+    secs: Optional[float] = None
+    utmos: Optional[float] = None
     # raw text kept for corpus-level translation metrics (BLEU/COMET)
     src_text: str = ""
     hyp_tgt: str = ""
@@ -55,10 +59,27 @@ def _load_audio(path: Optional[str], sample_rate: int = 16000) -> np.ndarray:
     return (0.05 * np.sin(2 * np.pi * 180 * t)).astype(np.float32)
 
 
+def _safe_metric(fn, label: str, item_id: str):
+    """Run a per-clip quality metric, degrading to None on any failure.
+
+    A missing heavy dep or a model-load error must not abort a whole eval run;
+    it just leaves that cell 'n/a'. The reason is printed once to stderr so a
+    first real run surfaces (e.g.) an uninstalled speechbrain instead of a
+    silent gap in the table.
+    """
+    try:
+        return float(fn())
+    except Exception as e:  # noqa: BLE001
+        print(f"[{label}] item {item_id}: {str(e)[:160]}", file=sys.stderr)
+        return None
+
+
 def evaluate(
     pipeline: S2STPipeline,
     manifest_path: str,
     sample_rate: int = 16000,
+    enable_secs: bool = False,
+    enable_utmos: bool = False,
 ) -> List[ItemResult]:
     items = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     results: List[ItemResult] = []
@@ -84,13 +105,38 @@ def evaluate(
         )
         rtf = metrics.real_time_factor(out.total_latency, out.asr.audio_duration)
 
+        item_id = item.get("id", f"item{i}")
+        # SECS clones from the source audio, so the source is the reference.
+        secs = (
+            _safe_metric(
+                lambda: metrics.speaker_similarity(
+                    audio, out.tts.audio, sample_rate, out.tts.sample_rate
+                ),
+                "secs",
+                item_id,
+            )
+            if enable_secs
+            else None
+        )
+        utmos_v = (
+            _safe_metric(
+                lambda: metrics.utmos(out.tts.audio, out.tts.sample_rate),
+                "utmos",
+                item_id,
+            )
+            if enable_utmos
+            else None
+        )
+
         results.append(
             ItemResult(
-                item_id=item.get("id", f"item{i}"),
+                item_id=item_id,
                 wer=item_wer,
                 duration_deviation=dev,
                 rtf=rtf,
                 latency=out.total_latency,
+                secs=secs,
+                utmos=utmos_v,
                 src_text=out.asr.text,
                 hyp_tgt=out.translation.text,
                 ref_tgt=item.get("ref_tgt", "") or "",
@@ -135,23 +181,49 @@ def _agg(values: List[float]) -> str:
     return f"mean={mean:.3f} median={med:.3f}"
 
 
+def _cell(v: Optional[float]) -> str:
+    return f"{v:>8.3f}" if v is not None else f"{'n/a':>8}"
+
+
 def print_report(results: List[ItemResult], translation: Optional[dict] = None) -> None:
     print("\n=== S2ST evaluation report ===")
     print(f"items: {len(results)}\n")
-    header = f"{'id':<14} {'WER':>8} {'dur_dev':>8} {'RTF':>8} {'lat(s)':>8}"
+    # TTS-quality columns appear only when actually measured, so the default
+    # (metrics off) table is unchanged.
+    has_secs = any(r.secs is not None for r in results)
+    has_utmos = any(r.utmos is not None for r in results)
+
+    cols = [f"{'id':<14}", f"{'WER':>8}", f"{'dur_dev':>8}", f"{'RTF':>8}", f"{'lat(s)':>8}"]
+    if has_secs:
+        cols.append(f"{'SECS':>8}")
+    if has_utmos:
+        cols.append(f"{'UTMOS':>8}")
+    header = " ".join(cols)
     print(header)
     print("-" * len(header))
     for r in results:
         wer_s = f"{r.wer:.3f}" if r.wer is not None else "n/a"
-        print(
-            f"{r.item_id:<14} {wer_s:>8} {r.duration_deviation:>8.3f} "
-            f"{r.rtf:>8.3f} {r.latency:>8.3f}"
-        )
+        row = [
+            f"{r.item_id:<14}",
+            f"{wer_s:>8}",
+            f"{r.duration_deviation:>8.3f}",
+            f"{r.rtf:>8.3f}",
+            f"{r.latency:>8.3f}",
+        ]
+        if has_secs:
+            row.append(_cell(r.secs))
+        if has_utmos:
+            row.append(_cell(r.utmos))
+        print(" ".join(row))
     print("-" * len(header))
     print(f"{'WER':>19}: {_agg([r.wer for r in results])}")
     print(f"{'duration_deviation':>19}: {_agg([r.duration_deviation for r in results])}")
     print(f"{'RTF':>19}: {_agg([r.rtf for r in results])}")
     print(f"{'latency':>19}: {_agg([r.latency for r in results])}")
+    if has_secs:
+        print(f"{'SECS':>19}: {_agg([r.secs for r in results])}")
+    if has_utmos:
+        print(f"{'UTMOS':>19}: {_agg([r.utmos for r in results])}")
     if translation:
         n = translation.get("items_with_ref", "?")
         print(f"\n-- translation quality (n={n}) --")

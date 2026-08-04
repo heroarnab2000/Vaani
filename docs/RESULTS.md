@@ -19,7 +19,8 @@ TTS), all **CPU**. English clip in → Hindi audio in the source speaker's voice
 | Translation | NLLB-200 distilled 600M | spBLEU | **31.21** | flores200 tokenizer; 11 refs |
 | Translation | NLLB-200 distilled 600M | COMET | _optional_ | wired; enable `eval.comet` (~2.3 GB) |
 | TTS | XTTS-v2 | duration_deviation | **0.477 / 0.962** | isochrony "before" (Phase 2 → ~0.10-0.15) |
-| TTS | XTTS-v2 | SECS / UTMOS | _pending_ | needs speaker-embed / MOS model |
+| TTS | XTTS-v2 | SECS (ECAPA) | ~0.33 (mean) | first sanity run, 3 demo wavs — see note |
+| TTS | XTTS-v2 | UTMOS (SpeechMOS) | ~2.2 (mean) | first sanity run, 3 demo wavs — see note |
 | System | full cascade | RTF | **5.57 / 6.65** | ~45s/clip on CPU; Phase-4 "before" |
 
 Notes:
@@ -29,6 +30,15 @@ Notes:
 - distil-large-v3 over large-v3 (English source, ~equal WER, half the download);
   swap to `large-v3` in `configs/default.yaml` for a multilingual run.
 - Demo artifact: `python scripts/demo.py --id <id>` writes the translated wav.
+- **SECS/UTMOS first sanity run** (not the canonical 12-clip harness pass): the
+  now-wired metrics scored 3 saved demo wavs (1904/1938/1972) — SECS
+  0.41/0.35/0.23, UTMOS 2.64/2.69/1.29. Both are lower than a strong TTS would
+  give (SECS ~0.7-0.9, UTMOS ~3.5+). Read with caveats: (a) SECS here is
+  *cross-lingual* (English source vs Hindi output), which compresses ECAPA
+  cosine scores; (b) n=3 is noisy; (c) XTTS Hindi is not its strongest language.
+  A bonus 1904 iso-ON vs iso-OFF pair showed UTMOS 1.29 vs 1.52 — the isochrony
+  time-stretch costing naturalness, exactly the quality trade-off flagged below.
+  The proper number is a full `run_eval.py` pass with `eval.secs/utmos: true`.
 
 Known XTTS-v2 limitations (tracked, not yet fixed):
 - 150-char/sentence cap can truncate a few long Hindi sentences.

@@ -42,3 +42,5 @@ eval:
   dataset: fleurs          # google/fleurs or covost2 for real refs
   comet: false             # COMET needs a ~2.3 GB model; enable for the MT step
   comet_gpus: 0            # COMET on CPU to avoid contending for 4 GB VRAM
+  secs: false              # SECS speaker-similarity via SpeechBrain ECAPA (~80 MB); voice-preservation number
+  utmos: false             # UTMOS naturalness (tarepan/SpeechMOS via torch.hub); scores TTS output alone

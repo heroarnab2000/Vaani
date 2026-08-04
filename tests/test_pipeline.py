@@ -68,6 +68,45 @@ def test_rtf():
     assert metrics.real_time_factor(0.5, 1.0) == 0.5
 
 
+def test_harness_wires_secs_utmos():
+    # SECS/UTMOS are computed only when enabled, and must flow into ItemResult.
+    # Stub the (heavy) metric fns so the plumbing is tested without models.
+    import json
+    import os
+    import tempfile
+
+    from s2st.eval import evaluate
+    from s2st.factory import build_pipeline
+
+    cfg = {
+        "stages": {"asr": "dummy", "translation": "dummy", "tts": "dummy"},
+        "language": {"src": "en", "tgt": "hi"},
+        "audio": {"sample_rate": 16000},
+    }
+    pipe = build_pipeline(cfg)
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".json", delete=False, encoding="utf-8"
+    ) as f:
+        json.dump([{"id": "t1", "ref_tgt": "x", "tgt_lang": "hi"}], f)
+        manifest = f.name
+
+    orig_secs, orig_utmos = metrics.speaker_similarity, metrics.utmos
+    try:
+        metrics.speaker_similarity = lambda *a, **k: 0.83
+        metrics.utmos = lambda *a, **k: 3.9
+
+        off = evaluate(pipe, manifest, sample_rate=16000)
+        assert off[0].secs is None and off[0].utmos is None
+
+        on = evaluate(pipe, manifest, sample_rate=16000, enable_secs=True, enable_utmos=True)
+        assert abs(on[0].secs - 0.83) < 1e-9
+        assert abs(on[0].utmos - 3.9) < 1e-9
+    finally:
+        metrics.speaker_similarity = orig_secs
+        metrics.utmos = orig_utmos
+        os.unlink(manifest)
+
+
 def test_pipeline_runs_end_to_end():
     pipe = S2STPipeline(DummyASR(), DummyTranslation(), DummyTTS())
     audio = np.zeros(16000 * 2, dtype=np.float32)  # 2s silence

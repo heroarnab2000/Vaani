@@ -11,6 +11,8 @@ import re
 import unicodedata
 from typing import List
 
+import numpy as np
+
 _PUNCT = re.compile(r"[^\w\s]", flags=re.UNICODE)
 _WS = re.compile(r"\s+")
 
@@ -116,11 +118,79 @@ def comet_score(
     return float(out["system_score"])
 
 
-# --- TTS quality: wired in the TTS step ---
+# --- TTS quality (Phase 1 metrics, wired here) ---
 
-def speaker_similarity(*args, **kwargs) -> float:
-    raise NotImplementedError("SECS: wire with a speaker-embedding model (TTS step).")
+_SECS_MODEL = None
+_UTMOS_MODEL = None
 
 
-def utmos(*args, **kwargs) -> float:
-    raise NotImplementedError("UTMOS: wire with a naturalness estimator (TTS step).")
+def speaker_similarity(
+    reference: np.ndarray,
+    generated: np.ndarray,
+    ref_sr: int,
+    gen_sr: int,
+    model_name: str = "speechbrain/spkrec-ecapa-voxceleb",
+) -> float:
+    """SECS: cosine similarity of ECAPA-TDNN speaker embeddings.
+
+    Measures whether the synthesized clip keeps the *source speaker's* voice --
+    the whole point of the voice-preserving TTS. ``reference`` is the source
+    audio (what XTTS cloned from), ``generated`` is the TTS output. Both are
+    resampled to 16 kHz (what ECAPA expects) and embedded; the return is their
+    cosine similarity, where 1.0 == identical embedding and voice clones
+    typically land ~0.7-0.9.
+
+    The ECAPA encoder is cached on first call and runs on CPU to avoid
+    contending for the scarce 4 GB VRAM. Deliberately uses a *different* encoder
+    than XTTS's internal one, so the score isn't self-referential.
+    """
+    global _SECS_MODEL
+    import torch
+
+    try:  # speechbrain >= 1.0
+        from speechbrain.inference.speaker import EncoderClassifier
+    except Exception:  # older layout
+        from speechbrain.pretrained import EncoderClassifier
+
+    from ..audio import resample_linear, to_mono
+
+    if _SECS_MODEL is None:
+        _SECS_MODEL = EncoderClassifier.from_hparams(
+            source=model_name, run_opts={"device": "cpu"}
+        )
+
+    def _embed(wav: "np.ndarray", sr: int) -> "torch.Tensor":
+        w = resample_linear(to_mono(np.asarray(wav, dtype=np.float32)), sr, 16000)
+        t = torch.from_numpy(np.ascontiguousarray(w, dtype=np.float32)).unsqueeze(0)
+        with torch.no_grad():
+            return _SECS_MODEL.encode_batch(t).reshape(-1)
+
+    e_ref = _embed(reference, ref_sr)
+    e_gen = _embed(generated, gen_sr)
+    return float(torch.nn.functional.cosine_similarity(e_ref, e_gen, dim=0))
+
+
+def utmos(audio: np.ndarray, sample_rate: int) -> float:
+    """UTMOS: predicted naturalness MOS (UTMOS22-strong), reference-free.
+
+    Runs the SpeechMOS UTMOS22-strong predictor (tarepan/SpeechMOS, loaded via
+    torch.hub -- no extra pip dep) on the TTS output, resampled to the 16 kHz
+    mono the model expects. Higher is better (roughly a 1-5 MOS scale).
+    Reference-free -- it scores the generated clip alone. Model cached on first
+    call and run on CPU.
+    """
+    global _UTMOS_MODEL
+    import torch
+
+    from ..audio import resample_linear, to_mono
+
+    if _UTMOS_MODEL is None:
+        _UTMOS_MODEL = torch.hub.load(
+            "tarepan/SpeechMOS", "utmos22_strong", trust_repo=True
+        )
+
+    wav = resample_linear(to_mono(np.asarray(audio, dtype=np.float32)), sample_rate, 16000)
+    t = torch.from_numpy(np.ascontiguousarray(wav, dtype=np.float32)).unsqueeze(0)
+    with torch.no_grad():
+        score = _UTMOS_MODEL(t, 16000)
+    return float(score.reshape(-1)[0])

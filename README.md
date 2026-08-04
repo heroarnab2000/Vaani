@@ -21,8 +21,10 @@ end on CPU: **English clip in → Hindi audio in the source speaker's voice**, n
 
 Reproduce the ablation: `python scripts/ablation.py`. Full table + honest
 caveats in [`docs/RESULTS.md`](docs/RESULTS.md) (dur-dev → 0 is partly "by
-construction" of rate control; the win is holding BLEU while doing it). SECS /
-UTMOS / COMET still wired-but-unmeasured. Stages + isochrony toggle live in
+construction" of rate control; the win is holding BLEU while doing it). SECS
+(ECAPA speaker similarity) / UTMOS (naturalness) / COMET are now fully wired
+behind `eval.secs` / `eval.utmos` / `eval.comet` flags — flip them on to score a
+run; the numbers themselves are pending a real eval pass. Stages + isochrony toggle live in
 [`configs/default.yaml`](configs/default.yaml); the orchestrator and harness
 only ever touch the abstract interfaces.
 

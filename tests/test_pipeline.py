@@ -68,6 +68,24 @@ def test_rtf():
     assert metrics.real_time_factor(0.5, 1.0) == 0.5
 
 
+def test_chunk_text_hindi_truncation():
+    # long Hindi sentences must be split under XTTS's 150-char cap, losslessly.
+    from s2st.tts.xtts import _XTTS_CHAR_LIMIT, _chunk_text
+
+    limit = _XTTS_CHAR_LIMIT["hi"]
+
+    short = "यह एक छोटा वाक्य है।"
+    assert _chunk_text(short, "hi") == [short]
+
+    long_sent = " ".join(["शब्द"] * 80)  # one sentence, well over 150 chars
+    chunks = _chunk_text(long_sent, "hi")
+    assert len(chunks) > 1
+    assert all(len(c) <= limit for c in chunks)
+    assert " ".join(chunks).split() == long_sent.split()  # no words dropped
+
+    assert _chunk_text("पहला वाक्य। दूसरा वाक्य।", "hi") == ["पहला वाक्य।", "दूसरा वाक्य।"]
+
+
 def test_harness_wires_secs_utmos():
     # SECS/UTMOS are computed only when enabled, and must flow into ItemResult.
     # Stub the (heavy) metric fns so the plumbing is tested without models.

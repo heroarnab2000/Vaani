@@ -19,8 +19,8 @@ TTS), all **CPU**. English clip in → Hindi audio in the source speaker's voice
 | Translation | NLLB-200 distilled 600M | spBLEU | **31.21** | flores200 tokenizer; 11 refs |
 | Translation | NLLB-200 distilled 600M | COMET | _optional_ | wired; enable `eval.comet` (~2.3 GB) |
 | TTS | XTTS-v2 | duration_deviation | **0.477 / 0.962** | isochrony "before" (Phase 2 → ~0.10-0.15) |
-| TTS | XTTS-v2 | SECS (ECAPA) | ~0.33 (mean) | first sanity run, 3 demo wavs — see note |
-| TTS | XTTS-v2 | UTMOS (SpeechMOS) | ~2.2 (mean) | first sanity run, 3 demo wavs — see note |
+| TTS | XTTS-v2 | SECS (ECAPA) | **0.309 / 0.279** | 12-clip En→Hi; low — mostly cross-lingual, see note |
+| TTS | XTTS-v2 | UTMOS (SpeechMOS) | **2.644 / 2.659** | 12-clip En→Hi; mediocre in Hindi, see note |
 | System | full cascade | RTF | **5.57 / 6.65** | ~45s/clip on CPU; Phase-4 "before" |
 
 Notes:
@@ -30,15 +30,29 @@ Notes:
 - distil-large-v3 over large-v3 (English source, ~equal WER, half the download);
   swap to `large-v3` in `configs/default.yaml` for a multilingual run.
 - Demo artifact: `python scripts/demo.py --id <id>` writes the translated wav.
-- **SECS/UTMOS first sanity run** (not the canonical 12-clip harness pass): the
-  now-wired metrics scored 3 saved demo wavs (1904/1938/1972) — SECS
-  0.41/0.35/0.23, UTMOS 2.64/2.69/1.29. Both are lower than a strong TTS would
-  give (SECS ~0.7-0.9, UTMOS ~3.5+). Read with caveats: (a) SECS here is
-  *cross-lingual* (English source vs Hindi output), which compresses ECAPA
-  cosine scores; (b) n=3 is noisy; (c) XTTS Hindi is not its strongest language.
-  A bonus 1904 iso-ON vs iso-OFF pair showed UTMOS 1.29 vs 1.52 — the isochrony
-  time-stretch costing naturalness, exactly the quality trade-off flagged below.
-  The proper number is a full `run_eval.py` pass with `eval.secs/utmos: true`.
+- **SECS / UTMOS measured** (full 12-clip En→Hi, isochrony off, models cached):
+  SECS median **0.309** / mean 0.279; UTMOS median **2.644** / mean 2.659. Both
+  sit well below a strong TTS (SECS ~0.7-0.9, UTMOS ~3.5+), and the low SECS is
+  *uniform* (0.22-0.49), not outlier-driven — so voice preservation is genuinely
+  weak in the Hindi direction. Two clips are speaker-mismatch failures:
+  `fleurs_1776` (SECS **-0.006**, worst WER 0.20) and `fleurs_1876` (SECS
+  **0.002**, lowest UTMOS 1.48, dur-dev 1.55).
+- **Cross-lingual control** (En→En resynthesis — XTTS re-clones each speaker into
+  *English* from the same reference, `ref_src` text): SECS median **0.546** /
+  mean 0.501, UTMOS median **3.838** / mean 3.794 — far above the Hindi numbers.
+  **Conclusion: the loss is mostly the Hindi direction, not broken cloning.** The
+  two Hindi "failures" recover in English (1876: 0.002→0.578, 1776: -0.006→0.404)
+  — they were bad *Hindi* syntheses, not broken ones. Caveats: (a) even En→En
+  SECS (0.55) is below the 0.7-0.9 ideal → a residual cloning/methodology gap
+  (reference length, leading silence, or ECAPA over full clips); (b) two speakers
+  (1972, 1914) clone poorly even in English (SECS ~0.22-0.31).
+- **Implication:** improving voice preservation means improving the **Hindi TTS**
+  — longer/cleaner speaker refs or XTTS speaker latents, an XTTS Hindi fine-tune,
+  or a stronger Hindi TTS for the Hi direction — plus the 150-char / number fixes
+  below. This matters extra for the video goal ([VIDEO_ROADMAP.md](VIDEO_ROADMAP.md)
+  risk R6): a weak voice under re-synced lips looks like the person but doesn't
+  *sound* like them. (Reproduce: `run_eval.py` with `eval.secs/utmos: true`; the
+  En→En control drives the TTS stage directly with `tgt_lang='en'`.)
 
 Known XTTS-v2 limitations (tracked, not yet fixed):
 - 150-char/sentence cap can truncate a few long Hindi sentences.

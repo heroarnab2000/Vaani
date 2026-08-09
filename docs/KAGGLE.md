@@ -17,17 +17,19 @@ committing to paid hardware.
 %cd Vaani
 ```
 
-## 3. Install deps — GPU torch, NOT the repo's CPU pin
-`requirements.txt` pins **CPU** torch (for the laptop); on Kaggle install a CUDA
-build instead, then the rest of the stack. (Kaggle ships a torch already; this
-pins the coqui-tts-compatible `<2.9` version.)
+## 3. Install deps — use Kaggle's GPU torch, add the rest
+**Do NOT reinstall torch.** Kaggle already ships a CUDA build (your step-4 check
+proves it works), and the repo's `torch==2.8.0` pin is a *Windows-laptop* choice
+that doesn't exist on the cu121 wheel index (it tops out at 2.5.x). Just add the
+project's other deps on top of Kaggle's torch:
 ```python
-!pip install -q "torch==2.8.0" "torchaudio==2.8.0" --index-url https://download.pytorch.org/whl/cu121
 !pip install -q faster-whisper "transformers>=4.57,<5" sentencepiece sacrebleu \
     datasets coqui-tts speechbrain
 ```
-> If pip reports a resolver conflict with a Kaggle-preinstalled package, restart
-> the kernel once after this cell and re-run from step 2 (skip re-cloning).
+> After this, re-check `torch.cuda.is_available()` is still `True`. If a dep
+> downgraded torch to CPU, restart the kernel and pin an **available** CUDA build:
+> `torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121`.
+> If pip reports a resolver conflict, restart the kernel and re-run (skip re-cloning).
 
 ## 4. Sanity-check the GPU is visible
 ```python

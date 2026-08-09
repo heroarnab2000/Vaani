@@ -1,0 +1,45 @@
+# GPU config — same pipeline as default.yaml, but every stage on CUDA.
+# Use on a GPU box (e.g. Kaggle free T4, a rented cloud GPU): drops RTF from
+# ~5.5 (CPU) toward <1. Run with:  python scripts/run_eval.py --config configs/gpu.yaml
+# See docs/KAGGLE.md for the free-T4 walkthrough.
+
+language:
+  src: en
+  tgt: hi
+
+audio:
+  sample_rate: 16000
+
+stages:
+  asr: faster_whisper
+  translation: nllb
+  tts: xtts_v2
+
+models:
+  asr:
+    name: distil-large-v3
+    device: cuda            # was cpu
+    compute_type: float16   # GPU path; float16 is the natural fit (int8 also works)
+  translation:
+    name: facebook/nllb-200-distilled-600M
+    device: cuda            # was cpu
+  tts:
+    name: tts_models/multilingual/multi-dataset/xtts_v2
+    device: cuda            # was cpu; XTTS is the bottleneck, so GPU helps most here
+
+isochrony:
+  enabled: false
+  tts_rate_control: true
+  max_stretch: 1.5
+  mt_rerank: true
+  mt_candidates: 3
+  hi_chars_per_sec: 14.0
+  tolerance: 0.15
+
+eval:
+  manifest: data/samples/fleurs_manifest.json
+  dataset: fleurs
+  comet: false
+  comet_gpus: 1             # COMET can use the GPU here (was 0 = CPU on the laptop)
+  secs: false               # flip to true to score voice preservation (SpeechBrain ECAPA)
+  utmos: false              # flip to true to score naturalness (SpeechMOS UTMOS22)

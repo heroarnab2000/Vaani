@@ -36,6 +36,37 @@ def _sanitize_for_xtts(text: str, lang: str) -> str:
     return text.translate(_HI_DIGITS) if lang == "hi" else text
 
 
+# XTTS silently truncates any single sentence longer than its per-language char
+# limit (Hindi = 150), cutting the audio short. Split long text into <=limit
+# chunks at sentence/word boundaries so long Hindi sentences are spoken in full.
+_XTTS_CHAR_LIMIT = {"en": 250, "hi": 150}
+
+
+def _chunk_text(text: str, lang: str) -> list[str]:
+    import re
+
+    limit = max(40, _XTTS_CHAR_LIMIT.get(lang, 180) - 10)  # margin under the hard cap
+    chunks: list[str] = []
+    for sent in re.split(r"(?<=[।.!?])\s+", text.strip()):
+        sent = sent.strip()
+        if not sent:
+            continue
+        if len(sent) <= limit:
+            chunks.append(sent)
+            continue
+        cur = ""  # greedy word-wrap an over-long sentence (no sentence break to use)
+        for word in sent.split():
+            cand = f"{cur} {word}".strip()
+            if cur and len(cand) > limit:
+                chunks.append(cur)
+                cur = word
+            else:
+                cur = cand
+        if cur:
+            chunks.append(cur)
+    return chunks or [text.strip()]
+
+
 class XTTSv2TTS(TTSStage):
     def __init__(
         self,
@@ -66,9 +97,12 @@ class XTTSv2TTS(TTSStage):
             return TTSResult(np.zeros(1, dtype=np.float32), XTTS_SR, 0.0)
 
         # XTTS clones from a reference wav *file*; write the source speaker audio
-        # (mono, 16 kHz) to a temp file for conditioning.
+        # (mono, 16 kHz) to a temp file for conditioning, then synthesize each
+        # <=char-limit chunk with that same reference and concatenate.
+        chunks = _chunk_text(text, lang)
         tmp_path = None
         try:
+            speaker_kwargs = {}
             if speaker_wav is not None and np.asarray(speaker_wav).size:
                 import soundfile as sf
 
@@ -76,14 +110,28 @@ class XTTSv2TTS(TTSStage):
                 fd, tmp_path = tempfile.mkstemp(suffix=".wav")
                 os.close(fd)
                 sf.write(tmp_path, ref16, REF_SR)
-                wav = self.tts.tts(text=text, speaker_wav=tmp_path, language=lang)
-            else:
-                wav = self.tts.tts(text=text, language=lang)
+                speaker_kwargs["speaker_wav"] = tmp_path
+
+            pieces = [
+                np.asarray(
+                    self.tts.tts(text=ch, language=lang, **speaker_kwargs), dtype=np.float32
+                )
+                for ch in chunks
+            ]
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
-        audio = np.asarray(wav, dtype=np.float32)
+        if len(pieces) == 1:
+            audio = pieces[0]
+        else:
+            gap = np.zeros(int(0.06 * XTTS_SR), dtype=np.float32)  # brief pause between chunks
+            joined: list[np.ndarray] = []
+            for i, p in enumerate(pieces):
+                if i:
+                    joined.append(gap)
+                joined.append(p)
+            audio = np.concatenate(joined).astype(np.float32)
         # isochrony rate control: time-stretch toward the source-speech duration
         if self.rate_control and translation.target_speech_duration > 0:
             audio, _ = fit_duration(

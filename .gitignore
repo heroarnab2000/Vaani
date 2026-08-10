@@ -12,6 +12,7 @@ venv/
 data/**/*.wav
 data/**/*.mp3
 data/**/*.flac
+data/**/*.mp4
 models/
 *.pt
 *.bin

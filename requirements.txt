@@ -23,6 +23,13 @@ sacrebleu             # spBLEU (flores200 tokenizer)
 # --- Phase 1: voice-preserving TTS (active) ---
 coqui-tts>=0.27       # XTTS-v2 (maintained idiap fork); numpy>=1.26 (numpy 2.x OK)
 
+# --- Video / lip-sync (feat/lip-sync) ---
+imageio>=2.34         # read/write video frames
+imageio-ffmpeg>=0.5   # bundles a static ffmpeg (no system install) for audio mux
+pillow>=10            # draw frames (DummyLipSync); usually already pulled by coqui-tts
+# Wav2Lip itself is NOT pip-installed — it's cloned + a checkpoint downloaded on
+# the GPU box; see docs/LIPSYNC_KAGGLE.md. The dummy lip-sync path needs none of it.
+
 # --- tooling ---
 # pytest                    # test runner (tests also run via `python tests/test_pipeline.py`)
 # wandb                     # experiment tracking

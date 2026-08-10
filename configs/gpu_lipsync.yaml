@@ -1,0 +1,42 @@
+# GPU config for the full video demo: real cascade + real Wav2Lip lip-sync.
+# Same as gpu.yaml plus a lipsync stage. Run on a GPU box (Kaggle) after cloning
+# Wav2Lip + fetching its checkpoint (see docs/LIPSYNC_KAGGLE.md):
+#   python scripts/lipsync_demo.py data/samples/testvideo_en.mp4 --config configs/gpu_lipsync.yaml
+
+language:
+  src: en
+  tgt: hi
+
+audio:
+  sample_rate: 16000
+
+stages:
+  asr: faster_whisper
+  translation: nllb
+  tts: xtts_v2
+  lipsync: wav2lip          # dummy | wav2lip
+
+models:
+  asr:
+    name: distil-large-v3
+    device: cuda
+    compute_type: float16
+  translation:
+    name: facebook/nllb-200-distilled-600M
+    device: cuda
+  tts:
+    name: tts_models/multilingual/multi-dataset/xtts_v2
+    device: cuda
+  lipsync:
+    repo_dir: Wav2Lip                               # git clone of Rudrabha/Wav2Lip
+    checkpoint: Wav2Lip/checkpoints/wav2lip_gan.pth  # downloaded checkpoint
+    device: cuda
+
+isochrony:
+  enabled: true             # match Hindi duration to the source so lips stay aligned
+  tts_rate_control: true
+  max_stretch: 1.5
+  mt_rerank: true
+  mt_candidates: 3
+  hi_chars_per_sec: 14.0
+  tolerance: 0.15

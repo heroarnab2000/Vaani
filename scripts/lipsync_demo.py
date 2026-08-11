@@ -35,6 +35,11 @@ def main() -> None:
     ap.add_argument("video", nargs="?", default="data/samples/testvideo_en.mp4")
     ap.add_argument("--config", default=None)
     ap.add_argument("--out", default="data/samples/testvideo_hi_lipsync.mp4")
+    ap.add_argument(
+        "--audio", default=None,
+        help="English speech wav to translate (use when the video has no/foreign "
+             "audio); defaults to the video's own audio track",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -42,9 +47,16 @@ def main() -> None:
     vpath = resolve_path(args.video)
 
     frames, fps = read_frames(str(vpath))
-    audio = extract_audio(str(vpath), sr)
+    if args.audio:
+        from s2st.audio import load_wav
+
+        audio = load_wav(resolve_path(args.audio), sr)
+    else:
+        audio = extract_audio(str(vpath), sr)
     if audio is None:
-        raise SystemExit(f"no audio track in {vpath}")
+        raise SystemExit(
+            f"no audio to translate (video {vpath} has no audio track; pass --audio a_wav)"
+        )
     print(f"in : {len(frames)} frames @ {fps:.0f}fps, {len(audio)/sr:.1f}s audio")
 
     # English audio -> Hindi audio in the speaker's voice

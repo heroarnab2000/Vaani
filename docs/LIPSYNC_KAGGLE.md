@@ -1,60 +1,75 @@
-# Real lip-sync (Wav2Lip) on a Kaggle GPU
+# Real lip-sync (Wav2Lip) on a Kaggle GPU — turnkey
 
-The dummy lip-sync (`DummyLipSync`) runs anywhere and proves the video plumbing,
-but it just draws a mouth bar. For a believable result you need a neural model on
-a GPU. This is the **offline "D1" demo**: a talking-head video in → the same
-person appearing to speak Hindi out. It does **not** need streaming.
+The dummy path proves the plumbing; this produces the **real** result: a real
+person's face re-lip-synced to the Hindi translation. It runs on a GPU (the T4
+from [`KAGGLE.md`](KAGGLE.md)), offline. Every asset URL below is verified.
 
-> Prereqs: the audio stack from [`KAGGLE.md`](KAGGLE.md) already installed, GPU +
-> Internet on. Video deps: `pip install imageio imageio-ffmpeg pillow`.
+> The video used here has **no audio track** (silent B-roll), so we drive the
+> translation from a separate English clip (a FLEURS sentence) via `--audio`. The
+> face just needs to be a frontal talking head; Wav2Lip overwrites the mouth.
 
-## 1. Get Wav2Lip + its weights
+## 0. Prereqs (once per session)
+GPU + Internet on. Then set up Vaani + deps exactly as in `KAGGLE.md`, plus video
+deps, and prep the FLEURS clip we'll "speak":
+```python
+!git clone https://github.com/heroarnab2000/Vaani.git
+%cd Vaani
+!pip install -q faster-whisper "transformers>=4.57,<5" sentencepiece sacrebleu datasets coqui-tts speechbrain
+!pip install -q imageio imageio-ffmpeg pillow
+import os; os.environ["COQUI_TOS_AGREED"] = "1"
+!python scripts/prep_fleurs.py --n 12          # gives us data/samples/fleurs_en_us_1938.wav
+```
+
+## 1. Get the real face video (verified URL)
+```python
+!curl -sL -o data/samples/pexels_src.mp4 \
+  https://videos.pexels.com/video-files/8136210/8136210-hd_1080_1920_25fps.mp4
+!ls -la data/samples/pexels_src.mp4     # ~5.7 MB, 12.8s, 1080x1920, a man talking to camera
+```
+*(If that URL ever 404s, grab a fresh one from https://www.pexels.com/video/a-man-talking-to-the-camera-8136210/ — the "Download" button, or upload your own clip.)*
+
+## 2. Set up Wav2Lip + weights (verified mirrors — the usual blocker solved)
 ```python
 !git clone https://github.com/Rudrabha/Wav2Lip
-# checkpoint (wav2lip_gan.pth) + the s3fd face detector weights.
-# The original Google-Drive links rot often; fetch from a current mirror into:
-#   Wav2Lip/checkpoints/wav2lip_gan.pth
-#   Wav2Lip/face_detection/detection/sfd/s3fd.pth
+!curl -sL -o Wav2Lip/checkpoints/wav2lip_gan.pth \
+  https://huggingface.co/spaces/manavisrani07/gradio-lipsync-wav2lip/resolve/main/checkpoints/wav2lip_gan.pth
+!mkdir -p Wav2Lip/face_detection/detection/sfd
+!curl -sL -o Wav2Lip/face_detection/detection/sfd/s3fd.pth \
+  https://huggingface.co/spaces/manavisrani07/gradio-lipsync-wav2lip/resolve/main/face_detection/detection/sfd/s3fd.pth
+# Wav2Lip is old: pin a compatible librosa and patch the removed np.float alias.
+!pip install -q librosa==0.9.1 numba==0.58 opencv-python-headless
+!sed -i 's/np\.float\b/float/g; s/np\.int\b/int/g' Wav2Lip/audio.py Wav2Lip/inference.py Wav2Lip/hparams.py
 ```
-> **This is the fiddly part.** Wav2Lip is old code (pins an ancient `librosa`
-> that fights modern numpy). On Kaggle you typically need `pip install
-> librosa==0.9.1 numba==0.58` (or run its inference in a separate env). If setup
-> fights you, **MuseTalk** (https://github.com/TMElyralab/MuseTalk) is the modern,
-> real-time-friendly alternative and slots into the same `LipSyncStage` interface
-> — add a `MuseTalkStage` mirroring `wav2lip.py`.
+> If Wav2Lip's deps still fight Kaggle's image, the actively-maintained
+> **Easy-Wav2Lip** (https://github.com/anothermartz/Easy-Wav2Lip) auto-installs
+> everything and its `install.py` fetches the checkpoints — a reliable fallback.
 
-## 2. A real test video (with a face)
-The synthetic `scripts/make_test_video.py` clip has no *real* face, so Wav2Lip's
-face detector will reject it. Use a real talking-head clip:
-- **Upload** a short clip of a person facing the camera as a Kaggle Dataset, or
-- record ~10s on your phone and upload it.
-
-Put it at `data/samples/testvideo_en.mp4` (or pass its path to the demo).
-
-## 3. Run the full video demo
+## 3. Run it — one command (translate + lip-sync)
 ```python
-!python scripts/lipsync_demo.py data/samples/testvideo_en.mp4 \
+!python scripts/lipsync_demo.py data/samples/pexels_src.mp4 \
+    --audio data/samples/fleurs_en_us_1938.wav \
     --config configs/gpu_lipsync.yaml \
-    --out data/samples/testvideo_hi_lipsync.mp4
+    --out data/samples/result.mp4
 ```
-This runs: extract English audio → ASR→MT→TTS (Hindi in the speaker's voice,
-isochrony on so it stays lip-alignable) → **Wav2Lip re-syncs the mouth to the
-Hindi audio** → muxed MP4 out.
+This runs: load the man's frames + the English FLEURS clip → ASR→MT→TTS (Hindi in
+a cloned voice, isochrony on) → **Wav2Lip re-syncs his mouth to the Hindi** → MP4.
 
-## How it fits the codebase
-- `src/s2st/lipsync/base.py` — `LipSyncStage` interface + `build_lipsync(cfg)`.
-- `src/s2st/lipsync/dummy.py` — the zero-dep mouth overlay (local/CI testing).
-- `src/s2st/lipsync/wav2lip.py` — drives Wav2Lip's `inference.py` (this doc).
-- `src/s2st/video/io.py` — frame read/write + audio extract/mux (bundled ffmpeg).
-- `scripts/lipsync_demo.py` — the end-to-end wiring; stages come from the config.
+## 4. Watch the result
+```python
+from IPython.display import Video
+Video("data/samples/result.mp4", embed=True, width=360)
+```
 
-Swapping dummy ↔ wav2lip is one line in the config (`stages.lipsync`). Everything
-else — the video I/O, the audio cascade, the mux — is identical.
+## How it maps to the code
+- `scripts/lipsync_demo.py` — orchestrates it; `--audio` supplies English when the
+  video is silent.
+- `src/s2st/lipsync/wav2lip.py` — `Wav2LipStage` shells to `Wav2Lip/inference.py`
+  (`configs/gpu_lipsync.yaml` sets `stages.lipsync: wav2lip` + the checkpoint path).
+- `src/s2st/video/io.py` — frame read/write + audio mux.
+- Swapping back to the dummy is one line: `stages.lipsync: dummy`.
 
-## Honest limits (for now)
-- **Offline only.** This is the file-in/file-out demo. Real-time ≤5s (Phase 7)
-  needs the streaming work first.
-- **Voice quality** is still the Hindi-TTS weak spot (SECS ~0.31) — the lips will
-  match, but the voice isn't fully convincing yet. Tracked in
-  [`VIDEO_ROADMAP.md`](VIDEO_ROADMAP.md) (R6).
-- **Frontal faces only** — Wav2Lip works on roughly head-on talking video.
+## Honest limits
+- **Offline only** — file in, file out. Real-time ≤5s (Phase 7) needs streaming first.
+- **Voice** is still the Hindi-TTS weak spot (SECS ~0.31): lips will match, but the
+  voice isn't fully convincing yet — tracked in [`VIDEO_ROADMAP.md`](VIDEO_ROADMAP.md) R6.
+- **Frontal faces only** — Wav2Lip needs a roughly head-on talking face.
